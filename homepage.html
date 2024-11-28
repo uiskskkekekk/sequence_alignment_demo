@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequence Alignment Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .result {
+            font-size: 18px;
+            white-space: pre;
+            font-family: "Courier New", monospace;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sequence Alignment Viewer</h1>
+    <form id="uploadForm">
+        <input type="file" id="fastaFile" accept=".txt .faa"  required>
+        <button type="submit">Submit</button>
+    </form>
+    <h2>Alignment Result:</h2>
+    <div id="result" class="result"></div>
+
+    <script>
+        // function colorizeSequence(sequence) {
+        //     const aminoAcidClasses = 'ACDEFGHIKLMNPQRSTVWY';
+        //     let coloredSequence = '';
+        //     for (let char of sequence) {
+        //         if (aminoAcidClasses.includes(char)) {
+        //             coloredSequence += `<span class="${char}">${char}</span>`;
+        //         } else {
+        //             coloredSequence += char;
+        //         }
+        //     }
+        //     return coloredSequence;
+        // }
+
+        document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('fastaFile');
+            if (!fileInput.files[0]) {
+                alert("Please select a FASTA file!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            try {
+                const response = await fetch('/api/align', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Error: ${error.error}`);
+                    return;
+                }
+
+                const data = await response.json();
+
+                // const resultDiv = document.getElementById('result');
+                // resultDiv.innerHTML = '';
+                // // data.forEach(item => {
+                // //     const label = `<div><b>${item.label}</b></div>`;
+                // //     const sequence = `<div>${colorizeSequence(item.sequence)}</div>`;
+                // //     resultDiv.innerHTML += label + sequence;
+                // // });
+                // data.forEach(item => {
+                //     const combined = `<div><b>${item.label}</b> ${colorizeSequence(item.sequence)}</div>`;
+                //     resultDiv.innerHTML += combined;
+                // });
+
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '';
+
+                const table = document.createElement('table');
+                table.style.borderCollapse = 'collapse';
+                table.style.width = '100%';
+
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+
+                    const labelCell = document.createElement('td');
+                    labelCell.style.border = '1px solid black';
+                    labelCell.style.padding = '8px';
+                    labelCell.style.fontWeight = 'bold';
+                    labelCell.textContent = item.label;
+
+                    const sequenceCell = document.createElement('td');
+                    sequenceCell.style.border = '1px solid black';
+                    sequenceCell.style.padding = '8px';
+                    sequenceCell.innerHTML = colorizeSequence(item.sequence);
+
+                    row.appendChild(labelCell);
+                    row.appendChild(sequenceCell);
+
+                    table.appendChild(row);
+                });
+
+                resultDiv.appendChild(table);
+
+            } catch (error) {
+                console.error("Error during sequence alignment:", error);
+                alert("An error occurred while processing the request.");
+            }
+        });
+
+
+        // process sequence with *
+        function colorizeSequence(line) {
+            if (line.startsWith('>')) {
+                //if it is a label then return
+                return `<span style="font-weight: bold;">${line}</span>`;
+            }
+
+            //remove *
+            let coloredSequence = '';
+            let isDiff = false;
+
+            for (let char of line) {
+                if (char === '*') {
+                    isDiff = !isDiff;
+                    continue;
+                }
+
+                if (isDiff) {
+                    // highlight different character
+                    coloredSequence += `<span style="color: red; font-weight: bold;">${char}</span>`;
+                } else {
+                    coloredSequence += `<span style="color: gray;">${char}</span>`;
+                }
+            }
+
+            return coloredSequence;
+        }
+
+    </script>
+</body>
+</html>
